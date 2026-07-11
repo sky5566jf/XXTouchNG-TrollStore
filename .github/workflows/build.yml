@@ -18,7 +18,7 @@ jobs:
     - name: Setup environment
       run: |
         # Install dependencies
-        brew install ldid libtool autoconf automake
+        brew install ldid libtool autoconf automake cmake
         
         # Install theos
         export THEOS=~/theos
@@ -27,9 +27,10 @@ jobs:
         # Install ellekit
         git clone https://github.com/evelyneee/ellekit /tmp/ellekit
         cd /tmp/ellekit
-        make package
-        sudo cp -R vendor/lib/* $THEOS/vendor/lib/ 2>/dev/null || true
-        sudo cp -R lib/* $THEOS/lib/ 2>/dev/null || true
+        mkdir -p build && cd build
+        cmake .. -DCMAKE_INSTALL_PREFIX=$THEOS
+        make -j$(sysctl -n hw.ncpu)
+        sudo make install
         
         echo "THEOS=~/theos" >> $GITHUB_ENV
         
