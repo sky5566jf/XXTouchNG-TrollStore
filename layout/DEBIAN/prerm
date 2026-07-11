@@ -1,0 +1,28 @@
+#!/bin/bash
+
+rm /usr/local/bin/xxtouch > /dev/null 2>&1
+
+launchctl unload "/Library/LaunchDaemons/ch.xxtou.elfclient.plist" > /dev/null 2>&1
+launchctl remove com.xxtou.elfclient > /dev/null 2>&1
+
+launchctl unload "/Library/LaunchDaemons/ch.xxtou.webserv.plist" > /dev/null 2>&1
+launchctl remove com.xxtou.webserv > /dev/null 2>&1
+
+launchctl unload "/Library/LaunchDaemons/ch.xxtou.supervisord.plist" > /dev/null 2>&1
+launchctl remove com.xxtou.supervisord > /dev/null 2>&1
+
+launchctl unload "/Library/LaunchDaemons/ch.xxtou.procqueued.plist" > /dev/null 2>&1
+launchctl remove com.xxtou.procqueued > /dev/null 2>&1
+
+launchctl unload "/Library/LaunchDaemons/ch.xxtou.simulatetouchd.plist" > /dev/null 2>&1
+launchctl remove com.xxtou.simulatetouchd > /dev/null 2>&1
+
+launchctl unload "/Library/LaunchDaemons/ch.xxtou.tfcontainermanagerd.plist" > /dev/null 2>&1
+launchctl remove com.xxtou.tfcontainermanagerd > /dev/null 2>&1
+
+launchctl unload "/Library/LaunchDaemons/ch.xxtou.authpolicyd.plist" > /dev/null 2>&1
+launchctl remove ch.xxtou.authpolicyd > /dev/null 2>&1
+
+killall -9 akd webinspectord > /dev/null 2>&1
+
+exit 0

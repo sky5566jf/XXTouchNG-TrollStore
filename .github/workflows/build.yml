@@ -1,0 +1,108 @@
+name: Build XXTouchNG TrollStore
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14  # macOS Sonoma with Xcode
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup environment
+      run: |
+        # Install dependencies
+        brew install ldid libtool autoconf automake
+        
+        # Install theos
+        export THEOS=~/theos
+        git clone --recursive https://github.com/theos/theos.git $THEOS
+        
+        # Install ellekit
+        git clone https://github.com/evelyneee/ellekit /tmp/ellekit
+        cd /tmp/ellekit
+        make package
+        sudo cp -R vendor/lib/* $THEOS/vendor/lib/ 2>/dev/null || true
+        sudo cp -R lib/* $THEOS/lib/ 2>/dev/null || true
+        
+        echo "THEOS=~/theos" >> $GITHUB_ENV
+        
+    - name: Build
+      run: |
+        export FINALPACKAGE=1
+        export TARGET_CODESIGN=ldid
+        make clean
+        make package FINALPACKAGE=1 -j$(sysctl -n hw.ncpu)
+        
+    - name: Package as tipa
+      run: |
+        mkdir -p Payload/XXTouchNG.app
+        mkdir -p Payload/XXTouchNG.app/lib
+        mkdir -p Payload/XXTouchNG.app/bin
+        
+        # Copy built files
+        find . -name "*.dylib" -path "*/layout/*" -exec cp {} Payload/XXTouchNG.app/lib/ \;
+        find . -type f -executable -path "*/layout/usr/local/xxtouch/bin/*" -exec cp {} Payload/XXTouchNG.app/bin/ \;
+        
+        # Copy resources
+        if [ -d "ext/layout/usr/local/xxtouch" ]; then
+          cp -R ext/layout/usr/local/xxtouch/* Payload/XXTouchNG.app/
+        fi
+        
+        # Create Info.plist
+        cat > Payload/XXTouchNG.app/Info.plist << 'PLIST'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleDisplayName</key>
+            <string>XXTouchNG</string>
+            <key>CFBundleExecutable</key>
+            <string>webserv</string>
+            <key>CFBundleIdentifier</key>
+            <string>ch.xxtou.xxtouchng</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>3.0.1</string>
+            <key>MinimumOSVersion</key>
+            <string>14.0</string>
+        </dict>
+        </plist>
+        PLIST
+        
+        # Create entitlements
+        cat > Payload/XXTouchNG.app/ent.plist << 'ENT'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>platform-application</key><true/>
+            <key>get-task-allow</key><true/>
+            <key>task_for_pid-allow</key><true/>
+            <key>com.apple.private.security.no-sandbox</key><true/>
+            <key>com.apple.private.hid.manager.client</key><true/>
+            <key>com.apple.private.hid.client.event-dispatch</key><true/>
+        </dict>
+        </plist>
+        ENT
+        
+        # Sign
+        cd Payload/XXTouchNG.app
+        ldid -Sent.plist webserv || true
+        cd ../..
+        
+        # Create tipa
+        zip -r XXTouchNG.tipa Payload/
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: XXTouchNG-TrollStore
+        path: XXTouchNG.tipa
