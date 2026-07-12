@@ -26,11 +26,11 @@ jobs:
         
         # Download iOS 14.5 SDK for theos
         mkdir -p $THEOS/sdks
-        curl -L -o $THEOS/sdks/iPhoneOS14.5.sdk.tar.gz https://github.com/theos/sdks/archive/master.tar.gz
         cd $THEOS/sdks
-        tar xzf master.tar.gz
-        mv sdks-master/iPhoneOS14.5.sdk . 2>/dev/null || mv sdks-master/* . 2>/dev/null || true
-        rm -rf sdks-master master.tar.gz
+        curl -L -o sdks.tar.gz https://github.com/theos/sdks/archive/refs/heads/master.tar.gz
+        tar xzf sdks.tar.gz
+        cp sdks-master/iPhoneOS14.5.sdk . 2>/dev/null || cp -R sdks-master/* . 2>/dev/null || true
+        rm -rf sdks-master sdks.tar.gz
         
         echo "THEOS=~/theos" >> $GITHUB_ENV
         
