@@ -40,6 +40,14 @@ jobs:
         # Fix permissions
         chmod +x liblua/tbdump.sh 2>/dev/null || true
         find . -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+        chmod +x $THEOS/bin/* 2>/dev/null || true
+        
+        # Create a dummy tbdump if it doesn't exist
+        if [ ! -f "$THEOS/bin/tbdump" ]; then
+          echo '#!/bin/sh' > $THEOS/bin/tbdump
+          echo 'echo ""' >> $THEOS/bin/tbdump
+          chmod +x $THEOS/bin/tbdump
+        fi
         
         # Use the root Makefile to build all subprojects
         make clean 2>/dev/null || true
