@@ -24,38 +24,40 @@ jobs:
         export THEOS=~/theos
         git clone --recursive https://github.com/theos/theos.git $THEOS
         
+        # Download iOS 14.5 SDK for theos
+        mkdir -p $THEOS/sdks
+        curl -L -o $THEOS/sdks/iPhoneOS14.5.sdk.tar.gz https://github.com/theos/sdks/archive/master.tar.gz
+        cd $THEOS/sdks
+        tar xzf master.tar.gz
+        mv sdks-master/iPhoneOS14.5.sdk . 2>/dev/null || mv sdks-master/* . 2>/dev/null || true
+        rm -rf sdks-master master.tar.gz
+        
         echo "THEOS=~/theos" >> $GITHUB_ENV
         
-    - name: Build core modules only
+    - name: Verify SDK
+      run: |
+        export THEOS=~/theos
+        echo "SDK path: $THEOS/sdks/"
+        ls -la $THEOS/sdks/ 2>/dev/null || echo "No SDKs found"
+        
+    - name: Build core modules
       run: |
         export THEOS=~/theos
         export FINALPACKAGE=1
         export TARGET_CODESIGN=ldid
         
-        # Build only core modules that don't require substrate/ellekit
         make clean 2>/dev/null || true
         
-        # Build individual modules
-        for module in liblua auth debug core ext exstring file memory pasteboard samba; do
-          echo "Building $module..."
+        # Build each module
+        for module in liblua auth debug core ext exstring file memory pasteboard samba alert app cookies touch screen device proc supervisor hid webserv; do
+          echo "=== Building $module ==="
           cd $module
-          make FINALPACKAGE=1 -j$(sysctl -n hw.ncpu) 2>&1 | tail -5 || echo "Warning: $module build issue"
+          make FINALPACKAGE=1 -j$(sysctl -n hw.ncpu) 2>&1 | tail -10
+          if [ $? -ne 0 ]; then
+            echo "Warning: $module had build errors"
+          fi
           cd ..
         done
-        
-        # Build dependent modules
-        for module in alert app cookies touch screen device proc supervisor hid; do
-          echo "Building $module..."
-          cd $module
-          make FINALPACKAGE=1 -j$(sysctl -n hw.ncpu) 2>&1 | tail -5 || echo "Warning: $module build issue"
-          cd ..
-        done
-        
-        # Build webserv last
-        echo "Building webserv..."
-        cd webserv
-        make FINALPACKAGE=1 -j$(sysctl -n hw.ncpu) 2>&1 | tail -10 || echo "Warning: webserv build issue"
-        cd ..
         
     - name: Package as tipa
       run: |
@@ -72,14 +74,11 @@ jobs:
         find . -type f -executable -path "*/layout/usr/local/xxtouch/bin/*" -exec cp {} Payload/XXTouchNG.app/bin/ \; 2>/dev/null || true
         
         # Copy Lua scripts and resources
-        if [ -d "ext/layout/usr/local/xxtouch" ]; then
-          cp -R ext/layout/usr/local/xxtouch/* Payload/XXTouchNG.app/ 2>/dev/null || true
-        fi
-        
-        # Copy webserv web files
-        if [ -d "webserv/layout/usr/local/xxtouch" ]; then
-          cp -R webserv/layout/usr/local/xxtouch/* Payload/XXTouchNG.app/ 2>/dev/null || true
-        fi
+        for dir in ext/layout/usr/local/xxtouch webserv/layout/usr/local/xxtouch; do
+          if [ -d "$dir" ]; then
+            cp -R $dir/* Payload/XXTouchNG.app/ 2>/dev/null || true
+          fi
+        done
         
         # Create Info.plist
         cat > Payload/XXTouchNG.app/Info.plist << 'PLIST'
