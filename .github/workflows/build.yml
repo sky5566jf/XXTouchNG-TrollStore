@@ -37,6 +37,10 @@ jobs:
         export FINALPACKAGE=1
         export TARGET_CODESIGN=ldid
         
+        # Fix permissions
+        chmod +x liblua/tbdump.sh 2>/dev/null || true
+        find . -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+        
         # Use the root Makefile to build all subprojects
         make clean 2>/dev/null || true
         make package FINALPACKAGE=1 -j$(sysctl -n hw.ncpu) 2>&1 | tee build.log || true
